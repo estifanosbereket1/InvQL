@@ -81,7 +81,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log("Incoming raw payload:", body);
 
     const { name, description, sku, price, category, imageUrl, imagePublicId } =
       body;

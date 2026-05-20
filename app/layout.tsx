@@ -10,7 +10,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Stockr — Inventory Management",
+  title: "InvQL — Inventory Management",
   description: "A clean and simple inventory management system.",
 };
 

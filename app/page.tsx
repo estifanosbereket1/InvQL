@@ -32,6 +32,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Package,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -172,10 +173,10 @@ export default function InventoryPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-1.5 rounded-lg bg-primary text-primary-foreground">
-              <Boxes className="w-5 h-5" />
+              <Package className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-sm leading-none">Stockr</h1>
+              <h1 className="font-semibold text-sm leading-none">InvQL</h1>
               <p className="text-xs text-muted-foreground leading-none mt-0.5">
                 Inventory Management
               </p>
