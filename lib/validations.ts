@@ -16,6 +16,11 @@ export const productSchema = z.object({
   ]),
   imageUrl: z.string().url().optional().or(z.literal("")),
   imagePublicId: z.string().optional(),
+  lowStockThreshold: z.coerce
+    .number()
+    .int()
+    .min(0, "Threshold must be 0 or greater")
+    .default(10),
 });
 
 export type ProductFormValues = z.infer<typeof productSchema>;

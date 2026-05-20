@@ -1,20 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductFormValues } from "@/lib/validations";
 import { Product } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -29,6 +23,7 @@ interface ProductFormProps {
   defaultValues?: Partial<Product>;
   onSubmit: (data: ProductFormValues) => Promise<void>;
   isLoading?: boolean;
+  onCancel?: () => void;
 }
 
 const CATEGORIES = [
@@ -44,8 +39,16 @@ export function ProductForm({
   defaultValues,
   onSubmit,
   isLoading,
+  onCancel,
 }: ProductFormProps) {
-  const form = useForm<ProductFormValues>({
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: defaultValues?.name ?? "",
@@ -56,154 +59,161 @@ export function ProductForm({
       category: defaultValues?.category ?? "other",
       imageUrl: defaultValues?.imageUrl ?? "",
       imagePublicId: defaultValues?.imagePublicId ?? "",
+      lowStockThreshold: defaultValues?.lowStockThreshold ?? 10,
     },
   });
 
+  useEffect(() => {
+    if (defaultValues) {
+      reset({
+        name: defaultValues.name ?? "",
+        description: defaultValues.description ?? "",
+        sku: defaultValues.sku ?? "",
+        price: defaultValues.price ? Number(defaultValues.price) : 0,
+        quantity: defaultValues.quantity ?? 0,
+        category: defaultValues.category ?? "other",
+        imageUrl: defaultValues.imageUrl ?? "",
+        imagePublicId: defaultValues.imagePublicId ?? "",
+        lowStockThreshold: defaultValues.lowStockThreshold ?? 10,
+      });
+    }
+  }, [defaultValues, reset]);
+
+  const imageUrl = watch("imageUrl");
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-        {/* Image Upload */}
-        <FormField
-          control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Product Image</FormLabel>
-              <FormControl>
-                <ImageUpload
-                  value={field.value}
-                  onChange={(url, publicId) => {
-                    field.onChange(url);
-                    form.setValue("imagePublicId", publicId);
-                  }}
-                  onRemove={() => {
-                    field.onChange("");
-                    form.setValue("imagePublicId", "");
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex flex-col min-h-0 flex-1"
+    >
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 min-h-0">
+        <div className="space-y-2">
+          <Label>Product Image</Label>
+          <ImageUpload
+            value={imageUrl || undefined}
+            onChange={(url, publicId) => {
+              setValue("imageUrl", url);
+              setValue("imagePublicId", publicId);
+            }}
+            onRemove={() => {
+              setValue("imageUrl", "");
+              setValue("imagePublicId", "");
+            }}
+          />
+        </div>
 
-        {/* Name & SKU */}
         <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Product Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Wireless Headphones" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <div className="space-y-2">
+            <Label htmlFor="name">Product Name</Label>
+            <Input
+              id="name"
+              placeholder="Wireless Headphones"
+              {...register("name")}
+            />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
             )}
-          />
-          <FormField
-            control={form.control}
-            name="sku"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>SKU</FormLabel>
-                <FormControl>
-                  <Input placeholder="WH-001" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sku">SKU</Label>
+            <Input id="sku" placeholder="WH-001" {...register("sku")} />
+            {errors.sku && (
+              <p className="text-xs text-destructive">{errors.sku.message}</p>
             )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            placeholder="Product details..."
+            className="resize-none"
+            rows={2}
+            {...register("description")}
           />
         </div>
 
-        {/* Description */}
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Product description..."
-                  className="resize-none"
-                  rows={3}
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="price">Price ($)</Label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              {...register("price")}
+            />
+            {errors.price && (
+              <p className="text-xs text-destructive">{errors.price.message}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="quantity">Quantity</Label>
+            <Input id="quantity" type="number" {...register("quantity")} />
+            {errors.quantity && (
+              <p className="text-xs text-destructive">
+                {errors.quantity.message}
+              </p>
+            )}
+          </div>
 
-        {/* Price, Quantity, Category */}
-        <div className="grid grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price ($)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="lowStockThreshold"
+              className="text-muted-foreground whitespace-nowrap"
+            >
+              Low Limit
+            </Label>
+            <Input
+              id="lowStockThreshold"
+              type="number"
+              {...register("lowStockThreshold")}
+            />
+            {errors.lowStockThreshold && (
+              <p className="text-xs text-destructive">
+                {errors.lowStockThreshold.message}
+              </p>
             )}
-          />
-          <FormField
-            control={form.control}
-            name="quantity"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Quantity</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="0" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Category</Label>
+            <Select
+              defaultValue={defaultValues?.category ?? "other"}
+              onValueChange={(val) => setValue("category", val as any)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+      </div>
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+      <div className="border-t border-border/60 px-6 py-4 flex gap-3 bg-muted/20">
+        {onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={onCancel}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+        )}
+        <Button type="submit" className="flex-[2]" disabled={isLoading}>
           {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           {defaultValues?.id ? "Update Product" : "Add Product"}
         </Button>
-      </form>
-    </Form>
+      </div>
+    </form>
   );
 }

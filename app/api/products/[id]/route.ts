@@ -1,65 +1,114 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { products } from "@/db/schema";
+import { products, inventoryLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { cloudinary } from "@/lib/cloudinary";
 
-type Params = { params: { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
-    const [product] = await db
+    const { id } = await context.params;
+    const body = await req.json();
+
+    const [existing] = await db
       .select()
       .from(products)
-      .where(eq(products.id, params.id));
-    if (!product)
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(product);
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
-  }
-}
+      .where(eq(products.id, id));
+    if (!existing)
+      return NextResponse.json({ error: "Record not found" }, { status: 404 });
 
-export async function PATCH(req: NextRequest, { params }: Params) {
-  try {
-    const body = await req.json();
-    const [updated] = await db
-      .update(products)
-      .set({
-        ...body,
-        status: computeStatus(body.quantity),
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, params.id))
-      .returning();
-    if (!updated)
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const targetQty =
+      body.quantity !== undefined ? Number(body.quantity) : existing.quantity;
+    const targetThreshold =
+      body.lowStockThreshold !== undefined
+        ? Number(body.lowStockThreshold)
+        : existing.lowStockThreshold;
+    const stockDelta = targetQty - existing.quantity;
+
+    const updated = await db.transaction(async (tx) => {
+      const [res] = await tx
+        .update(products)
+        .set({
+          ...body,
+          quantity: targetQty,
+          lowStockThreshold: targetThreshold,
+          status: qtyStatus(targetQty, targetThreshold),
+          updatedAt: new Date(),
+        })
+        .where(eq(products.id, id))
+        .returning();
+
+      let logNote = "Product properties updated.";
+      let operationType: "update" | "stock_adjustment" = "update";
+
+      if (stockDelta !== 0) {
+        operationType = "stock_adjustment";
+        logNote = `Stock volume altered from ${existing.quantity} to ${targetQty} (Delta: ${stockDelta > 0 ? "+" : ""}${stockDelta}).`;
+      }
+
+      await tx.insert(inventoryLogs).values({
+        productId: res.id,
+        productName: res.name,
+        type: operationType,
+        quantityChanged: stockDelta,
+        notes: logNote,
+      });
+
+      return res;
+    });
+
     return NextResponse.json(updated);
   } catch {
-    return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to apply delta updates" },
+      { status: 500 },
+    );
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: Params) {
+export async function DELETE(_: NextRequest, context: RouteContext) {
   try {
-    const [product] = await db
+    const { id } = await context.params;
+
+    const [existing] = await db
       .select()
       .from(products)
-      .where(eq(products.id, params.id));
+      .where(eq(products.id, id));
+    if (!existing)
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    if (product?.imagePublicId) {
-      await cloudinary.uploader.destroy(product.imagePublicId);
+    if (existing.imagePublicId) {
+      await cloudinary.uploader
+        .destroy(existing.imagePublicId)
+        .catch(() => null);
     }
 
-    await db.delete(products).where(eq(products.id, params.id));
+    await db.transaction(async (tx) => {
+      await tx.insert(inventoryLogs).values({
+        productId: null, // item is removed
+        productName: existing.name,
+        type: "delete",
+        quantityChanged: -existing.quantity,
+        notes: `Permanently expunged item [${existing.sku}] from operational records.`,
+      });
+      await tx.delete(products).where(eq(products.id, id));
+    });
+
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed deletion runtime" },
+      { status: 500 },
+    );
   }
 }
 
-function computeStatus(qty: number): "in_stock" | "low_stock" | "out_of_stock" {
+function qtyStatus(
+  qty: number,
+  threshold: number,
+): "in_stock" | "low_stock" | "out_of_stock" {
   if (qty <= 0) return "out_of_stock";
-  if (qty <= 10) return "low_stock";
+  if (qty <= threshold) return "low_stock";
   return "in_stock";
 }

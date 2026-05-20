@@ -31,6 +31,7 @@ export function ImageUpload({ value, onChange, onRemove }: ImageUploadProps) {
         <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border group">
           <Image
             src={value}
+            unoptimized
             alt="Product image"
             fill
             className="object-cover transition-all group-hover:scale-105"

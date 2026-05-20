@@ -45,9 +45,9 @@ export function InventoryTable({
 }: InventoryTableProps) {
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="w-full h-16 rounded-lg" />
+      <div className="space-y-2 border border-border rounded-lg p-1">
+        {[...Array(6)].map((_, i) => (
+          <Skeleton key={i} className="w-full h-[60px] rounded-md" />
         ))}
       </div>
     );
@@ -94,6 +94,7 @@ export function InventoryTable({
                     <Image
                       src={product.imageUrl}
                       alt={product.name}
+                      unoptimized
                       width={44}
                       height={44}
                       className="object-cover w-full h-full"

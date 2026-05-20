@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Product } from "@/db/schema";
+import { Product, InventoryLog } from "@/db/schema";
 import { ProductFormValues } from "@/lib/validations";
 import { InventoryTable } from "@/components/inventory-table";
 import { ProductForm } from "@/components/product-form";
@@ -24,48 +24,88 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
-import { Toaster } from "@/components/ui/toaster";
-import { Plus, Search, Boxes, RefreshCw } from "lucide-react";
+
+import {
+  Plus,
+  Search,
+  Boxes,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+
+interface PaginationMeta {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+}
 
 export default function InventoryPage() {
-  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
+  const [logs, setLogs] = useState<InventoryLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Sheet (sidebar) state
+  // Sheet and Modal triggers
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
-  // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
-  // Filters
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [paginationMeta, setPaginationMeta] = useState<PaginationMeta>({
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    limit: 10,
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data } = await axios.get<Product[]>("/api/products");
-      setProducts(data);
-    } catch {
-      toast({
-        title: "Error",
-        description: "Failed to load products",
-        variant: "destructive",
+      const { data } = await axios.get<{
+        items: Product[];
+        recentLogs: InventoryLog[];
+        meta: PaginationMeta;
+      }>("/api/products", {
+        params: {
+          page: currentPage,
+          limit: pageSize,
+          search: debouncedSearch,
+          category: categoryFilter,
+          status: statusFilter,
+        },
       });
+      setProducts(data.items);
+      setLogs(data.recentLogs || []);
+      setPaginationMeta(data.meta);
+    } catch {
+      toast.error("Error", { description: "Failed to load products" });
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [currentPage, pageSize, debouncedSearch, categoryFilter, statusFilter]);
 
   useEffect(() => {
-    fetchProducts();
+    (async () => {
+      await fetchProducts();
+    })();
   }, [fetchProducts]);
 
   const handleCreate = () => {
@@ -87,21 +127,20 @@ export default function InventoryPage() {
     try {
       if (editingProduct) {
         await axios.patch(`/api/products/${editingProduct.id}`, data);
-        toast({
-          title: "Updated!",
+        toast.success("Updated!", {
           description: `${data.name} has been updated.`,
         });
       } else {
         await axios.post("/api/products", data);
-        toast({ title: "Added!", description: `${data.name} has been added.` });
+        toast.success("Added!", {
+          description: `${data.name} has been added.`,
+        });
       }
       setSheetOpen(false);
       fetchProducts();
-    } catch (error: any) {
-      toast({
-        title: "Error",
+    } catch (error) {
+      toast.error("Error", {
         description: error?.response?.data?.error ?? "Something went wrong",
-        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -113,38 +152,20 @@ export default function InventoryPage() {
     setIsDeleting(true);
     try {
       await axios.delete(`/api/products/${deleteTarget.id}`);
-      toast({
-        title: "Deleted",
+      toast.success("Deleted", {
         description: `${deleteTarget.name} has been removed.`,
       });
       setDeleteTarget(null);
       fetchProducts();
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to delete product",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to delete product" });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Client-side filtering
-  const filtered = products.filter((p) => {
-    const matchSearch =
-      !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase());
-    const matchCategory =
-      categoryFilter === "all" || p.category === categoryFilter;
-    const matchStatus = statusFilter === "all" || p.status === statusFilter;
-    return matchSearch && matchCategory && matchStatus;
-  });
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
+    <div className="min-h-screen bg-background overflow-y-auto !pointer-events-auto">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -160,7 +181,7 @@ export default function InventoryPage() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs hidden sm:flex">
-              {products.length} items
+              {paginationMeta.totalItems} items total
             </Badge>
             <Button
               variant="ghost"
@@ -176,17 +197,14 @@ export default function InventoryPage() {
             <Button size="sm" onClick={handleCreate} className="gap-2">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Add Product</span>
-              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Stats */}
         <StatsBar products={products} />
 
-        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -197,7 +215,13 @@ export default function InventoryPage() {
               className="pl-9"
             />
           </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <Select
+            value={categoryFilter}
+            onValueChange={(val) => {
+              setCategoryFilter(val);
+              setCurrentPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-44">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
@@ -211,7 +235,13 @@ export default function InventoryPage() {
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => {
+              setStatusFilter(val);
+              setCurrentPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -224,37 +254,147 @@ export default function InventoryPage() {
           </Select>
         </div>
 
-        {/* Table */}
         <InventoryTable
-          products={filtered}
+          products={products}
           isLoading={isLoading}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
+
+        {products.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/60 pt-4 px-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Show</span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => {
+                  setPageSize(Number(val));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-16 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>entries per page</span>
+            </div>
+
+            <div className="flex items-center gap-6">
+              <span className="text-sm font-medium">
+                Page {paginationMeta.currentPage} of {paginationMeta.totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  disabled={currentPage === 1 || isLoading}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.min(prev + 1, paginationMeta.totalPages),
+                    )
+                  }
+                  disabled={
+                    currentPage === paginationMeta.totalPages || isLoading
+                  }
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {logs.length > 0 && (
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm mt-8">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold tracking-tight">
+                System Audit Log
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Real-time history of inventory operations
+              </p>
+            </div>
+            <div className="space-y-3 max-h-[260px] overflow-y-auto pr-2">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="text-xs flex items-start gap-3 border-b border-border/40 pb-2.5 last:border-0 last:pb-0"
+                >
+                  <span
+                    className={`px-2 py-0.5 rounded-md font-medium text-[10px] tracking-wider uppercase shrink-0 min-w-[110px] text-center ${
+                      log.type === "create"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : log.type === "delete"
+                          ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                          : log.type === "stock_adjustment"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {log.type.replace("_", " ")}
+                  </span>
+                  <div className="flex-1">
+                    <span className="font-semibold text-foreground mr-1.5">
+                      {log.productName}
+                    </span>
+                    <span className="text-muted-foreground">{log.notes}</span>
+                  </div>
+                  <span className="text-muted-foreground text-[10px] shrink-0 font-mono self-center">
+                    {new Date(log.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Create / Edit Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-4">
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen} modal={false}>
+        <SheetContent
+          onInteractOutside={(e) => e.preventDefault()}
+          className="w-full sm:max-w-[560px] p-0 flex flex-col h-full overflow-hidden"
+        >
+          <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/60 shrink-0">
             <SheetTitle>
-              {editingProduct ? "Edit Product" : "Add New Product"}
+              {editingProduct ? "Edit product" : "Add new product"}
             </SheetTitle>
             <SheetDescription>
               {editingProduct
                 ? "Update the product details below."
-                : "Fill in the details to add a new product to your inventory."}
+                : "Fill in the details to add a new product."}
             </SheetDescription>
           </SheetHeader>
           <ProductForm
             defaultValues={editingProduct ?? undefined}
             onSubmit={handleSubmit}
             isLoading={isSubmitting}
+            onCancel={() => setSheetOpen(false)}
           />
         </SheetContent>
       </Sheet>
 
-      {/* Delete Dialog */}
       <DeleteDialog
         open={!!deleteTarget}
         productName={deleteTarget?.name ?? ""}
@@ -262,8 +402,6 @@ export default function InventoryPage() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-
-      <Toaster />
     </div>
   );
 }
