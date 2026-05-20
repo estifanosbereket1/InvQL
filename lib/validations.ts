@@ -4,7 +4,10 @@ export const productSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
   description: z.string().optional(),
   sku: z.string().min(1, "SKU is required").max(100),
-  price: z.coerce.number().positive("Price must be positive"),
+  price: z
+    .union([z.string(), z.number()])
+    .transform(Number)
+    .pipe(z.number().positive("Price must be positive")),
   quantity: z.coerce.number().int().min(0, "Quantity cannot be negative"),
   category: z.enum([
     "electronics",

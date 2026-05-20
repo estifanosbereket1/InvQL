@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type Resolver } from "react-hook-form";
 import { productSchema, ProductFormValues } from "@/lib/validations";
 import { Product } from "@/db/schema";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ export function ProductForm({
     reset,
     formState: { errors },
   } = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as Resolver<ProductFormValues>,
     defaultValues: {
       name: defaultValues?.name ?? "",
       description: defaultValues?.description ?? "",
