@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface PaginationMeta {
   totalItems: number;
@@ -54,7 +56,7 @@ export default function InventoryPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
-
+  const { theme, setTheme } = useTheme();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -138,7 +140,7 @@ export default function InventoryPage() {
       }
       setSheetOpen(false);
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       toast.error("Error", {
         description: error?.response?.data?.error ?? "Something went wrong",
       });
@@ -183,6 +185,15 @@ export default function InventoryPage() {
             <Badge variant="outline" className="text-xs hidden sm:flex">
               {paginationMeta.totalItems} items total
             </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              <Sun className="w-4 h-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute w-4 h-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
