@@ -19,7 +19,7 @@
 
 ## Overview
 
-InvQL is a responsive, single-page inventory management application built with the modern full-stack Next.js ecosystem. It supports full CRUD operations, image uploads, server-side search and filtering, dynamic pagination, per-product low stock thresholds, auto-generating SKUs, and a real-time audit log — all with a polished UI and dark mode support.
+InvQL is a responsive, single-page inventory management application built with the modern full-stack Next.js ecosystem. It supports full CRUD operations, image uploads, server-side search and filtering, dynamic pagination, per-product low stock thresholds, auto-generating SKUs, and a real-time audit log , all with a polished UI and dark mode support.
 
 ---
 
@@ -31,7 +31,7 @@ InvQL is a responsive, single-page inventory management application built with t
 | ---------- | ------------------------------------------------------------------ |
 | **Create** | Add products via a slide-in sheet form with full validation        |
 | **Read**   | Paginated product table with server-side search and filtering      |
-| **Update** | Edit any product in-place — image replacement included             |
+| **Update** | Edit any product in-place , image replacement included             |
 | **Delete** | Confirm-gated deletion that also removes the image from Cloudinary |
 
 ### Inventory Table
@@ -44,17 +44,17 @@ InvQL is a responsive, single-page inventory management application built with t
 | Category | Human-readable category label                                |
 | Price    | Formatted to 2 decimal places                                |
 | Quantity | Live stock count                                             |
-| Status   | Auto-computed badge — In Stock / Low Stock / Out of Stock    |
+| Status   | Auto-computed badge , In Stock / Low Stock / Out of Stock    |
 | Actions  | Edit and Delete buttons per row                              |
 
 ### Search, Filter & Pagination
 
 | Feature             | Details                                                                 |
 | ------------------- | ----------------------------------------------------------------------- |
-| **Search**          | Debounced (350ms) full-text search by product name or SKU — server-side |
+| **Search**          | Debounced (350ms) full-text search by product name or SKU , server-side |
 | **Category filter** | Filter by Electronics, Clothing, Food, Furniture, Tools, or Other       |
 | **Status filter**   | Filter by In Stock, Low Stock, or Out of Stock                          |
-| **Page size**       | Configurable — 5, 10, 25, or 50 items per page                          |
+| **Page size**       | Configurable , 5, 10, 25, or 50 items per page                          |
 | **Pagination**      | Previous / Next controls with current page and total page count         |
 | **Reset on filter** | Page resets to 1 whenever search or filters change                      |
 
@@ -71,7 +71,7 @@ Four live-calculated summary cards at the top of the page:
 
 ### Per-Product Low Stock Threshold
 
-Each product has its own configurable `low_stock_threshold` (defaults to 10). Status is computed dynamically against that product's threshold rather than a global constant — so a high-volume item can have a threshold of 50 while a slow-moving item sits at 5. This makes stock alerts meaningful across diverse inventory.
+Each product has its own configurable `low_stock_threshold` (defaults to 10). Status is computed dynamically against that product's threshold rather than a global constant , so a high-volume item can have a threshold of 50 while a slow-moving item sits at 5. This makes stock alerts meaningful across diverse inventory.
 
 | Quantity vs Threshold | Status       |
 | --------------------- | ------------ |
@@ -82,7 +82,7 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 ### SKU Generation
 
 - Auto-generates SKUs in the `SKU-0001` pattern when the form opens for a new product
-- Queries the database for the highest existing SKU number and continues from there — no gaps, no collisions
+- Queries the database for the highest existing SKU number and continues from there , no gaps, no collisions
 - Wand icon inside the SKU input field regenerates on demand at any time
 - Users can clear and type their own custom SKU freely
 - Duplicate SKU errors are caught at the database level and returned as a specific, human-readable message rather than a generic 500
@@ -90,19 +90,19 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 ### Audit Log
 
 - Displays the **7 most recent inventory operations** beneath the table in real time
-- Fetched alongside product data in a single API call — no extra round trip
+- Fetched alongside product data in a single API call , no extra round trip
 - Each entry records:
 
 | Field             | Details                                                               |
 | ----------------- | --------------------------------------------------------------------- |
 | `type`            | create, update, delete, or stock_adjustment                           |
-| `productName`     | Snapshot of the name at time of action — persists even after deletion |
+| `productName`     | Snapshot of the name at time of action , persists even after deletion |
 | `quantityChanged` | How many units were added or removed (0 for non-stock changes)        |
 | `notes`           | Human-readable description of exactly what changed                    |
 | `createdAt`       | Timestamp shown in HH:MM format                                       |
 
 - Color-coded action badges: green for creates, red for deletes, amber for stock adjustments, neutral for updates
-- `productId` is a nullable foreign key — set to `null` on product deletion, so log history is never lost
+- `productId` is a nullable foreign key , set to `null` on product deletion, so log history is never lost
 
 ### Image Management
 
@@ -113,11 +113,11 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 
 ### UX & Design
 
-- **Dark mode** — system default with manual toggle, powered by `next-themes`
-- **Responsive** — fully usable on mobile, tablet, and desktop
-- **Slide-in Sheet** for create/edit — doesn't obscure the table
-- **Backdrop blur** — background blurs when the product sheet is open, keeping focus on the form
-- **Scroll lock** — page scroll is disabled while the form sheet is active
+- **Dark mode** , system default with manual toggle, powered by `next-themes`
+- **Responsive** , fully usable on mobile, tablet, and desktop
+- **Slide-in Sheet** for create/edit , doesn't obscure the table
+- **Backdrop blur** , background blurs when the product sheet is open, keeping focus on the form
+- **Scroll lock** , page scroll is disabled while the form sheet is active
 - **Confirm dialog** before any destructive delete
 - **Sonner toasts** for all success and error feedback, including specific database-level errors
 - **Skeleton loaders** while data is fetching
@@ -134,7 +134,7 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 | [Next.js 14](https://nextjs.org)                          | App Router, React Server Components, API routes                  |
 | [TypeScript](https://typescriptlang.org)                  | Type safety throughout                                           |
 | [Tailwind CSS v4](https://tailwindcss.com)                | Utility-first styling                                            |
-| [shadcn/ui](https://ui.shadcn.com) (radix-nova)           | Component primitives — Table, Sheet, Dialog, Badge, Select, etc. |
+| [shadcn/ui](https://ui.shadcn.com) (radix-nova)           | Component primitives , Table, Sheet, Dialog, Badge, Select, etc. |
 | [next-themes](https://github.com/pacocoursey/next-themes) | Dark / light mode                                                |
 | [react-hook-form](https://react-hook-form.com)            | Performant form state management                                 |
 | [Zod](https://zod.dev)                                    | Schema validation shared between client and API                  |
@@ -147,7 +147,7 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 | Library                                        | Purpose                                                 |
 | ---------------------------------------------- | ------------------------------------------------------- |
 | [Neon](https://neon.tech)                      | Serverless PostgreSQL with connection pooling           |
-| [Drizzle ORM](https://orm.drizzle.team)        | Type-safe SQL ORM — schema-first, relations, migrations |
+| [Drizzle ORM](https://orm.drizzle.team)        | Type-safe SQL ORM , schema-first, relations, migrations |
 | [next-cloudinary](https://next.cloudinary.dev) | Cloudinary Upload Widget for Next.js                    |
 | [Cloudinary](https://cloudinary.com)           | Image storage, transformation, and CDN delivery         |
 
@@ -188,7 +188,7 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 | ------------------ | -------------- | --------------------------------------------------- |
 | `id`               | `uuid`         | Primary key, auto-generated                         |
 | `product_id`       | `uuid`         | Nullable FK → `products.id` (set null on delete)    |
-| `product_name`     | `varchar(255)` | Name snapshot — preserved after product deletion    |
+| `product_name`     | `varchar(255)` | Name snapshot , preserved after product deletion    |
 | `type`             | `enum`         | create, update, delete, stock_adjustment            |
 | `quantity_changed` | `integer`      | Units added or removed (0 for non-stock operations) |
 | `notes`            | `text`         | Human-readable description of the change            |
@@ -265,7 +265,7 @@ Open [http://localhost:3000](http://localhost:3000).
 1. Push your repo to GitHub
 2. Import the project at [vercel.com](https://vercel.com)
 3. Add all environment variables from `.env.local` in the Vercel dashboard
-4. Deploy — Vercel auto-detects Next.js, no config needed
+4. Deploy , Vercel auto-detects Next.js, no config needed
 
 ---
 
