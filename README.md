@@ -19,7 +19,7 @@
 
 ## Overview
 
-InvQL is a responsive, single-page inventory management application built with the modern full-stack Next.js ecosystem. It supports full CRUD operations, image uploads, server-side search and filtering, dynamic pagination, per-product low stock thresholds, and a real-time audit log — all with a polished UI and dark mode support.
+InvQL is a responsive, single-page inventory management application built with the modern full-stack Next.js ecosystem. It supports full CRUD operations, image uploads, server-side search and filtering, dynamic pagination, per-product low stock thresholds, auto-generating SKUs, and a real-time audit log — all with a polished UI and dark mode support.
 
 ---
 
@@ -79,6 +79,14 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 | `1 – threshold`       | Low Stock    |
 | `> threshold`         | In Stock     |
 
+### SKU Generation
+
+- Auto-generates SKUs in the `SKU-0001` pattern when the form opens for a new product
+- Queries the database for the highest existing SKU number and continues from there — no gaps, no collisions
+- Wand icon inside the SKU input field regenerates on demand at any time
+- Users can clear and type their own custom SKU freely
+- Duplicate SKU errors are caught at the database level and returned as a specific, human-readable message rather than a generic 500
+
 ### Audit Log
 
 - Displays the **7 most recent inventory operations** beneath the table in real time
@@ -108,8 +116,10 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 - **Dark mode** — system default with manual toggle, powered by `next-themes`
 - **Responsive** — fully usable on mobile, tablet, and desktop
 - **Slide-in Sheet** for create/edit — doesn't obscure the table
+- **Backdrop blur** — background blurs when the product sheet is open, keeping focus on the form
+- **Scroll lock** — page scroll is disabled while the form sheet is active
 - **Confirm dialog** before any destructive delete
-- **Sonner toasts** for all success and error feedback
+- **Sonner toasts** for all success and error feedback, including specific database-level errors
 - **Skeleton loaders** while data is fetching
 - **Empty state** when no products match the current filters
 
@@ -201,6 +211,7 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 | `PATCH`  | `/api/products/:id`        | Update product. Recomputes status. Handles Cloudinary image replacement. Writes audit log                                    |
 | `DELETE` | `/api/products/:id`        | Delete product and its Cloudinary image. Writes audit log with `onDelete: set null` on FK                                    |
 | `DELETE` | `/api/upload?publicId=xxx` | Remove a specific image from Cloudinary by public ID                                                                         |
+| `POST`   | `/api/sku/generate`        | Queries the max existing `SKU-XXXX` value and returns the next one in sequence                                               |
 
 ---
 
@@ -215,7 +226,7 @@ Each product has its own configurable `low_stock_threshold` (defaults to 10). St
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/yourusername/InvQL.git
+git clone https://github.com/estifanosbereket1/InvQL.git
 cd InvQL
 npm install
 ```
@@ -265,28 +276,30 @@ InvQL/
 ├── app/
 │   ├── api/
 │   │   ├── products/
-│   │   │   ├── route.ts          # GET (paginated + logs), POST
-│   │   │   └── [id]/route.ts     # GET, PATCH, DELETE
-│   │   └── upload/route.ts       # Cloudinary image deletion
-│   ├── globals.css               # Tailwind + light/dark CSS variables
-│   ├── layout.tsx                # Root layout with ThemeProvider + Toaster
-│   └── page.tsx                  # Single-page app entry point
+│   │   │   ├── route.ts               # GET (paginated + logs), POST
+│   │   │   └── [id]/route.ts          # GET, PATCH, DELETE
+│   │   ├── sku/
+│   │   │   └── generate/route.ts      # Sequential SKU generation
+│   │   └── upload/route.ts            # Cloudinary image deletion
+│   ├── globals.css                    # Tailwind + light/dark CSS variables
+│   ├── layout.tsx                     # Root layout with ThemeProvider + Toaster
+│   └── page.tsx                       # Single-page app entry point
 ├── components/
-│   ├── ui/                       # shadcn/ui primitives
-│   ├── inventory-table.tsx       # Product data table with skeletons
-│   ├── product-form.tsx          # Create / edit form with RHF + Zod
-│   ├── image-upload.tsx          # Cloudinary upload widget wrapper
-│   ├── delete-dialog.tsx         # Confirm delete modal
-│   ├── stats-bar.tsx             # Live summary stat cards
-│   └── theme-provider.tsx        # next-themes wrapper
+│   ├── ui/                            # shadcn/ui primitives
+│   ├── inventory-table.tsx            # Product data table with skeletons
+│   ├── product-form.tsx               # Create / edit form with RHF + Zod
+│   ├── image-upload.tsx               # Cloudinary upload widget wrapper
+│   ├── delete-dialog.tsx              # Confirm delete modal
+│   ├── stats-bar.tsx                  # Live summary stat cards
+│   └── theme-provider.tsx             # next-themes wrapper
 ├── db/
-│   ├── index.ts                  # Neon Pool + Drizzle client
-│   └── schema.ts                 # Tables, enums, relations, and inferred types
+│   ├── index.ts                       # Neon Pool + Drizzle client
+│   └── schema.ts                      # Tables, enums, relations, and inferred types
 ├── lib/
-│   ├── cloudinary.ts             # Cloudinary server-side config
-│   ├── validations.ts            # Zod product schema
-│   └── utils.ts                  # cn() and shared helpers
-└── drizzle.config.ts             # Drizzle Kit config with dotenv
+│   ├── cloudinary.ts                  # Cloudinary server-side config
+│   ├── validations.ts                 # Zod product schema
+│   └── utils.ts                       # cn() and shared helpers
+└── drizzle.config.ts                  # Drizzle Kit config with dotenv
 ```
 
 ---

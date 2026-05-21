@@ -59,7 +59,20 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     });
 
     return NextResponse.json(updated);
-  } catch {
+  } catch (err: any) {
+    const code = err?.cause?.code ?? err?.code;
+    const constraint = err?.cause?.constraint ?? err?.constraint;
+
+    if (code === "23505" && constraint === "products_sku_unique") {
+      return NextResponse.json(
+        {
+          error:
+            "A product with this SKU already exists. Please use a unique SKU.",
+        },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to apply delta updates" },
       { status: 500 },

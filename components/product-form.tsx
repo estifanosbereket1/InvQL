@@ -18,6 +18,11 @@ import {
 } from "@/components/ui/select";
 import { ImageUpload } from "@/components/image-upload";
 import { Loader2 } from "lucide-react";
+import { Wand2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import axios from "axios";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
 
 interface ProductFormProps {
   defaultValues?: Partial<Product>;
@@ -41,6 +46,18 @@ export function ProductForm({
   isLoading,
   onCancel,
 }: ProductFormProps) {
+  const [isGeneratingSku, setIsGeneratingSku] = useState(false);
+  const generateSku = async () => {
+    setIsGeneratingSku(true);
+    try {
+      const { data } = await axios.post("/api/sku/generate");
+      setValue("sku", data.sku, { shouldValidate: true });
+    } catch {
+      toast.error("Failed to generate SKU");
+    } finally {
+      setIsGeneratingSku(false);
+    }
+  };
   const {
     register,
     handleSubmit,
@@ -81,6 +98,12 @@ export function ProductForm({
 
   const imageUrl = watch("imageUrl");
 
+  useEffect(() => {
+    if (!defaultValues?.id) {
+      generateSku();
+    }
+  }, []);
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -116,10 +139,28 @@ export function ProductForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="sku">SKU</Label>
-            <Input id="sku" placeholder="WH-001" {...register("sku")} />
-            {errors.sku && (
-              <p className="text-xs text-destructive">{errors.sku.message}</p>
-            )}
+
+            <InputGroup>
+              <InputGroupInput
+                id="sku"
+                placeholder="SKU-0001"
+                className="font-mono text-sm"
+                {...register("sku")}
+              />
+              <InputGroupAddon align="inline-end">
+                <button
+                  type="button"
+                  onClick={generateSku}
+                  disabled={isGeneratingSku}
+                  className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  title="Auto-generate SKU"
+                >
+                  <Wand2
+                    className={`w-3.5 h-3.5 ${isGeneratingSku ? "animate-pulse" : ""}`}
+                  />
+                </button>
+              </InputGroupAddon>
+            </InputGroup>
           </div>
         </div>
 
@@ -134,7 +175,7 @@ export function ProductForm({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="price">Price ($)</Label>
             <Input

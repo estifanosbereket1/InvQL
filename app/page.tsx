@@ -53,7 +53,6 @@ export default function InventoryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Sheet and Modal triggers
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
@@ -167,8 +166,24 @@ export default function InventoryPage() {
     }
   };
 
+  useEffect(() => {
+    if (sheetOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sheetOpen]);
+
   return (
-    <div className="min-h-screen bg-background overflow-y-auto !pointer-events-auto">
+    <div
+      className={`min-h-screen bg-background !pointer-events-auto ${
+        sheetOpen ? "overflow-hidden h-screen" : "overflow-y-auto"
+      }`}
+    >
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -382,6 +397,12 @@ export default function InventoryPage() {
           </div>
         )}
       </main>
+      {sheetOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm"
+          onClick={() => setSheetOpen(false)}
+        />
+      )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen} modal={false}>
         <SheetContent

@@ -117,8 +117,22 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(product, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Database Insertion Failure Error Context:", err);
+
+    const code = err?.cause?.code ?? err?.code;
+    const constraint = err?.cause?.constraint ?? err?.constraint;
+
+    if (code === "23505" && constraint === "products_sku_unique") {
+      return NextResponse.json(
+        {
+          error:
+            "A product with this SKU already exists. Please use a unique SKU.",
+        },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to build records" },
       { status: 500 },
